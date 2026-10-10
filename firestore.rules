@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    function hasProfile() {
+      return signedIn() && exists(userPath());
+    }
+    function profile() {
+      return get(userPath()).data;
+    }
+    function active() {
+      return hasProfile() && profile().active == true;
+    }
+    function admin() {
+      return active() && profile().role == 'admin';
+    }
+    function buildingAccess(buildingId) {
+      return active() && (admin() || buildingId in profile().buildingIds);
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || admin());
+      allow list: if admin();
+      allow create, update, delete: if false;
+    }
+
+    match /buildings/{buildingId} {
+      allow get, list: if active();
+      allow create, update, delete: if false;
+    }
+
+    match /units/{unitCode} {
+      allow get: if buildingAccess(resource.data.buildingId);
+      allow list, create, update, delete: if false;
+    }
+
+    match /buildingAccessCodes/{buildingId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
