@@ -13,6 +13,7 @@ initializeApp();
 const db = getFirestore();
 const auth = getAuth();
 const BARS = "ABCDEFGHIJKLMNR";
+// Keep requests available while the production reCAPTCHA Enterprise key is being verified.
 const CALLABLE = { enforceAppCheck: false };
 
 function fail(code, message) {
